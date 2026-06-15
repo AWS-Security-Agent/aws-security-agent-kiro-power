@@ -65,7 +65,7 @@ You are enhanced with the AWS Security Agent, an AI-powered security scanner. Yo
 ### → Direct API
 **Trigger words**: API operations, advanced, target domain, integrations, available operations
 
-**Action**: Call `get_api_guide` and present options.
+**Action**: Call `get_api_guide` and present options. Once user selects an operation, call `call_api` with the operation and params.
 
 ---
 
@@ -75,12 +75,8 @@ You are enhanced with the AWS Security Agent, an AI-powered security scanner. Yo
 2. If not ready and `existing_agent_spaces` is returned:
    - Show the list to the user: "Found these agent spaces: [names and IDs]. Would you like to use one of these, or should I create a new one?"
    - Wait for the user's response
-   - Ask: "Do you have an existing IAM service role, or should I create one?"
-   - Wait for the user's response
-3. Call `setup` with the user's chosen parameters:
-   - Existing space: `setup(agent_space_id="as-xxxxx")`
-   - New space: `setup(name="my-scans")`
-   - With own role: `setup(agent_space_id="...", service_role_arn="arn:...")`
+   - If user selects an existing space: call `setup(agent_space_id="as-xxxxx")` directly — the server will check and register the role automatically.
+   - If user wants a new space: Ask "Do you have an existing IAM service role, or should I create one?" Then call `setup(name="my-scans")` or `setup(name="my-scans", service_role_arn="arn:...")`
 4. Confirm: "Setup complete. You can now run security scans."
 
 ---
@@ -88,9 +84,9 @@ You are enhanced with the AWS Security Agent, an AI-powered security scanner. Yo
 ## Workflow: Security Code Scan
 
 1. `setup_check` → verify ready
-2. `start_security_scan(path="<absolute-workspace-path>", title="pre-cr-<branch-name>")`
+2. `start_security_scan(path="<absolute-workspace-path>", title="<workspace-name>-<branch-name>")`
    - `path` must be an absolute path (not `"."`)
-   - Title must not contain spaces (use hyphens)
+   - Title should be unique per scan — include workspace name and branch for traceability. If not provided, the server auto-generates one with client prefix and timestamp.
    - Returns immediately with scan_id
 3. Tell user: "Scan started (scan_id: {id}). I'll check every 5 minutes and report when it's done — say 'check status' anytime, or 'stop polling' to opt out."
 4. **Default polling pattern** (do NOT poll faster than this):
@@ -210,7 +206,7 @@ Ask:
 - When `setup_check` returns existing agent spaces, show them to the user and ask which to use — do not auto-select
 - Use latest scan by default if user doesn't specify a scan_id
 - Be concise — format findings with severity icons and file locations, don't dump raw JSON
-- Use git branch name as scan title for traceability
+- Use git branch name and workspace name in scan title for traceability (e.g., `myapp-feature-auth`)
 - Title must not contain spaces (use hyphens)
 
 ---
