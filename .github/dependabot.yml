@@ -1,0 +1,11 @@
+version: 2
+updates:
+  # The repo has no package manifests; the only pinned dependencies are
+  # the SHA-pinned GitHub Actions in .github/workflows.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    groups:
+      github-actions:
+        patterns: ["*"]
