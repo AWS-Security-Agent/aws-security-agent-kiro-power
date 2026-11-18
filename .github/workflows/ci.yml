@@ -1,0 +1,50 @@
+# Validates the power on every pull request, including Dependabot PRs.
+# The `ci-gate` job always runs and is the single required status check
+# on main. Do not add a `paths:` filter: a PR with no reported check
+# is never auto-merged.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "17 6 * * 1" # weekly: catches breaking releases of the @latest MCP server
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: validate (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2 # v10.3.3
+      - name: Validate mcp.json, POWER.md and MCP server tools
+        run: python3 .github/scripts/validate_power.py
+
+  ci-gate:
+    name: ci-gate
+    if: always()
+    needs: [validate]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require all jobs to succeed
+        env:
+          RESULT: ${{ needs.validate.result }}
+        run: |
+          echo "validate: $RESULT"
+          [ "$RESULT" = "success" ]
